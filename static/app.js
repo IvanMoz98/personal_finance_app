@@ -108,10 +108,19 @@ function baseOptions({ stacked = false, onClick } = {}) {
       tooltip: {
         itemSort: (a, b) => b.raw - a.raw,
         filter: (item) => item.raw !== 0,
+        // `items` est vide quand toutes les valeurs du mois survolé valent 0 (mois sans données, ou
+        // catégories masquées) : ne jamais supposer items[0], sinon l'erreur casse la boucle
+        // d'animation de Chart.js, partagée par tous les graphiques (qui deviennent alors vides).
         callbacks: {
-          title: (items) => monthLabel(state.stats.months[items[0].dataIndex], true),
+          title(items) {
+            const i = items[0]?.dataIndex ?? this.chart.getActiveElements()[0]?.index;
+            return i === undefined ? "" : monthLabel(state.stats.months[i], true);
+          },
           label: (item) => ` ${item.dataset.label} : ${fmt(item.raw)}`,
-          footer: stacked ? (items) => `Total : ${fmt(items.reduce((s, i) => s + i.raw, 0))}` : undefined,
+          footer(items) {
+            if (!items.length) return "Rien ce mois-ci";
+            return stacked ? `Total : ${fmt(items.reduce((s, i) => s + i.raw, 0))}` : "";
+          },
         },
       },
     },
