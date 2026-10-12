@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mes Finances</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">💶 Mes Finances</div>
+  <nav id="tabs">
+    <button data-tab="dashboard" class="active">Tableau de bord</button>
+    <button data-tab="transactions">Opérations</button>
+    <button data-tab="import">Import CSV</button>
+    <button data-tab="categories">Catégories &amp; règles</button>
+    <button data-tab="accounts">Comptes</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============================================================ Tableau de bord -->
+  <section id="tab-dashboard" class="tab active">
+    <div class="filters">
+      <label>Mois <select id="dash-month"></select></label>
+      <label>Période <select id="dash-range">
+        <option value="6">6 mois</option><option value="12" selected>12 mois</option>
+        <option value="24">24 mois</option><option value="36">36 mois</option>
+      </select></label>
+      <label>Compte <select id="dash-account" class="account-select" data-all="Tous les comptes"></select></label>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid">
+      <div class="card span-2">
+        <div class="card-head"><h2>Dépenses par catégorie</h2><span class="hint">Cliquez sur une barre pour choisir le mois</span></div>
+        <div class="chart-box tall"><canvas id="chart-categories"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2 id="breakdown-title">Répartition du mois</h2></div>
+        <div id="breakdown" class="breakdown"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Revenus et dépenses</h2></div>
+        <div class="chart-box"><canvas id="chart-balance"></canvas></div>
+      </div>
+      <div class="card span-2">
+        <div class="card-head"><h2>Dépenses récurrentes et ponctuelles</h2></div>
+        <div class="chart-box"><canvas id="chart-recurring"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ Opérations -->
+  <section id="tab-transactions" class="tab">
+    <div class="filters">
+      <label>Mois <select id="tx-month"><option value="">Tous</option></select></label>
+      <label>Compte <select id="tx-account" class="account-select" data-all="Tous"></select></label>
+      <label>Catégorie <select id="tx-category"></select></label>
+      <label>Type <select id="tx-recurring">
+        <option value="">Toutes</option><option value="1">Récurrentes</option><option value="0">Ponctuelles</option>
+      </select></label>
+      <label class="grow">Recherche <input id="tx-search" type="search" placeholder="Libellé ou note…"></label>
+      <button class="btn" id="tx-add-btn">+ Saisie manuelle</button>
+    </div>
+
+    <div class="bulkbar hidden" id="bulkbar">
+      <span id="bulk-count"></span>
+      <select id="bulk-category"></select>
+      <button class="btn small" id="bulk-apply-cat">Catégoriser</button>
+      <button class="btn small" id="bulk-rec-on">Marquer récurrentes</button>
+      <button class="btn small" id="bulk-rec-off">Marquer ponctuelles</button>
+      <button class="btn small danger" id="bulk-delete">Supprimer</button>
+    </div>
+
+    <div class="card flush">
+      <div class="tx-summary" id="tx-summary"></div>
+      <div class="table-wrap">
+        <table class="tx-table">
+          <thead><tr>
+            <th><input type="checkbox" id="tx-check-all"></th>
+            <th>Date</th><th>Compte</th><th>Libellé</th><th class="num">Montant</th>
+            <th>Catégorie</th><th title="Récurrente">Récur.</th><th>Note</th><th></th>
+          </tr></thead>
+          <tbody id="tx-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ Import -->
+  <section id="tab-import" class="tab">
+    <div class="card">
+      <h2>1. Choisir le fichier</h2>
+      <p class="hint">Exportez le relevé depuis le site de votre banque au format CSV. Les doublons sont ignorés : vous pouvez réimporter un relevé qui chevauche le précédent sans risque.</p>
+      <div class="row">
+        <label>Compte <select id="imp-account" class="account-select"></select></label>
+        <label class="file-drop" id="file-drop">
+          <input type="file" id="imp-file" accept=".csv,.txt,text/csv">
+          <span id="imp-file-name">Glissez un fichier CSV ici ou cliquez pour choisir</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card hidden" id="imp-mapping-card">
+      <h2>2. Vérifier les colonnes</h2>
+      <p class="hint" id="imp-info"></p>
+      <div class="mapping" id="imp-mapping"></div>
+      <label class="check"><input type="checkbox" id="imp-invert"> Inverser le signe des montants (si vos dépenses apparaissent en positif)</label>
+      <div class="table-wrap"><table class="preview" id="imp-preview"></table></div>
+      <div class="row end"><button class="btn primary" id="imp-commit">Importer</button></div>
+    </div>
+
+    <div class="card hidden" id="imp-result"></div>
+  </section>
+
+  <!-- ============================================================ Catégories & règles -->
+  <section id="tab-categories" class="tab">
+    <div class="grid two">
+      <div class="card">
+        <h2>Catégories</h2>
+        <p class="hint">« Virement interne » : exclu des statistiques (virements entre vos comptes).</p>
+        <form class="inline-form" id="cat-form">
+          <input name="name" placeholder="Nouvelle catégorie" required>
+          <input name="color" type="color" value="#2a78d6">
+          <select name="kind"><option value="expense">Dépense</option><option value="income">Revenu</option><option value="transfer">Virement interne</option></select>
+          <button class="btn primary">Ajouter</button>
+        </form>
+        <table class="list" id="cat-list"></table>
+      </div>
+      <div class="card">
+        <h2>Règles automatiques</h2>
+        <p class="hint">Si le libellé contient le motif (sans tenir compte de la casse), l'opération reçoit la catégorie et/ou le statut récurrent. Appliquées automatiquement à chaque import.</p>
+        <form class="inline-form" id="rule-form">
+          <input name="pattern" placeholder="Motif, ex : CARREFOUR" required>
+          <select name="category_id" class="category-select"></select>
+          <select name="recurring"><option value="">Récurrence inchangée</option><option value="1">Récurrente</option><option value="0">Ponctuelle</option></select>
+          <button class="btn primary">Ajouter</button>
+        </form>
+        <div class="row">
+          <button class="btn small" id="rules-apply">Appliquer aux non catégorisées</button>
+          <button class="btn small" id="rules-apply-all">Réappliquer à toutes les opérations</button>
+          <button class="btn small" id="detect-recurring">Détecter les dépenses récurrentes</button>
+        </div>
+        <table class="list" id="rule-list"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ Comptes -->
+  <section id="tab-accounts" class="tab">
+    <div class="card narrow">
+      <h2>Comptes</h2>
+      <form class="inline-form" id="acc-form">
+        <input name="name" placeholder="Nom du compte (ex : Livret A, Carte Boursorama)" required>
+        <input name="color" type="color" value="#2a78d6">
+        <button class="btn primary">Ajouter</button>
+      </form>
+      <table class="list" id="acc-list"></table>
+    </div>
+  </section>
+</main>
+
+<!-- Saisie manuelle -->
+<dialog id="tx-dialog">
+  <form method="dialog" id="tx-form" class="dialog-form">
+    <h2>Nouvelle opération</h2>
+    <label>Compte <select name="account_id" class="account-select"></select></label>
+    <label>Date <input name="date" type="date" required></label>
+    <label>Libellé <input name="label" required></label>
+    <label>Montant (négatif = dépense) <input name="amount" required placeholder="-42,50"></label>
+    <label>Catégorie <select name="category_id" class="category-select"></select></label>
+    <label class="check"><input type="checkbox" name="recurring"> Récurrente</label>
+    <div class="row end">
+      <button class="btn" value="cancel" formnovalidate>Annuler</button>
+      <button class="btn primary" value="ok">Ajouter</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Création de règle depuis une opération -->
+<dialog id="rule-dialog">
+  <form method="dialog" id="rule-dialog-form" class="dialog-form">
+    <h2>Créer une règle</h2>
+    <p class="hint" id="rule-dialog-label"></p>
+    <label>Si le libellé contient <input name="pattern" required></label>
+    <label>Catégorie <select name="category_id" class="category-select"></select></label>
+    <label>Récurrence <select name="recurring"><option value="">Inchangée</option><option value="1">Récurrente</option><option value="0">Ponctuelle</option></select></label>
+    <div class="row end">
+      <button class="btn" value="cancel" formnovalidate>Annuler</button>
+      <button class="btn primary" value="ok">Créer et appliquer</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

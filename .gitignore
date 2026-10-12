@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+finance.db
+build/
+dist/
+.DS_Store
