@@ -16,3 +16,6 @@ L'application n'est pas signée numériquement : votre système affichera un ave
 
 Vos données restent sur votre ordinateur :
 macOS `~/Library/Application Support/Mes Finances/finance.db` · Windows `%APPDATA%\Mes Finances\finance.db`
+
+---
+Logiciel distribué sous licence [PolyForm Noncommercial 1.0.0](https://github.com/IvanMoz98/personal_finance_app/blob/main/LICENSE.md) : utilisation, modification et partage libres, **usage commercial interdit**.

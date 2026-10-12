@@ -82,3 +82,23 @@ git tag v1.1.0 && git push origin v1.1.0
 
 Pour compiler sans publier : onglet **Actions** → **Build** → **Run workflow** (les fichiers sont dans *Artifacts*).
 Pour compiler la version Mac en local : `.venv/bin/pyinstaller --noconfirm mes_finances.spec`.
+
+## Licence
+
+Ce projet est distribué sous la licence **[PolyForm Noncommercial 1.0.0](LICENSE.md)**
+(texte officiel en anglais, seule version qui fait foi).
+
+En résumé :
+
+- ✅ vous pouvez **utiliser**, **modifier** et **partager** ce logiciel, y compris des versions modifiées ;
+- ✅ usage personnel, associatif, éducatif, de recherche ou par un organisme public autorisé ;
+- ❌ **aucune utilisation commerciale** : ni vente, ni intégration dans un produit ou service payant,
+  ni utilisation à des fins commerciales au sein d'une entreprise ;
+- 📄 toute copie partagée doit être accompagnée du texte de la licence (ou de son adresse) et de la
+  ligne `Required Notice` qu'il contient.
+
+Pour un usage commercial, contactez l'auteur.
+
+Composants tiers, soumis à leurs propres licences : [Chart.js](https://www.chartjs.org/) (MIT, mention
+conservée dans `static/vendor/chart.umd.min.js`), Flask et pywebview (BSD), PyInstaller (GPL avec
+exception autorisant la distribution des exécutables).
