@@ -9,7 +9,9 @@ const monthLabel = (m, long = false) => {
   const [y, mo] = m.split("-").map(Number);
   return new Date(y, mo - 1, 1).toLocaleDateString("fr-FR", long ? { month: "long", year: "numeric" } : { month: "short", year: "2-digit" });
 };
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+// Date du jour au format AAAA-MM-JJ en heure locale (toISOString() donne l'heure UTC : la veille après minuit)
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const currentMonth = () => today().slice(0, 7);
 
 async function api(path, { method = "GET", body, form } = {}) {
   const opts = { method };
@@ -273,6 +275,7 @@ function renderTransactions() {
         <td><label class="toggle"><input type="checkbox" class="tx-rec" ${t.recurring ? "checked" : ""}><span></span></label></td>
         <td><input class="note" value="${esc(t.note)}" placeholder="…"></td>
         <td style="white-space:nowrap">
+          <button class="icon-btn tx-edit" title="Modifier l'opération">✎</button>
           <button class="icon-btn tx-rule" title="Créer une règle à partir de ce libellé">⚡</button>
           <button class="icon-btn tx-del" title="Supprimer">✕</button>
         </td>
@@ -324,7 +327,14 @@ $("#tx-body").addEventListener("click", async (e) => {
     loadTransactions();
   } else if (e.target.classList.contains("tx-rule")) {
     openRuleDialog(txById(id));
+  } else if (e.target.classList.contains("tx-edit")) {
+    openTxDialog(txById(id));
   }
+});
+// double-clic sur la date, le libellé ou le montant : ouvre aussi la modification
+$("#tx-body").addEventListener("dblclick", (e) => {
+  const tr = e.target.closest("tr[data-id]");
+  if (tr && e.target.closest("td.label, td.num")) openTxDialog(txById(Number(tr.dataset.id)));
 });
 
 $("#tx-check-all").addEventListener("change", (e) => {
@@ -350,24 +360,49 @@ $("#bulk-delete").addEventListener("click", async () => {
   loadTransactions();
 });
 
-// saisie manuelle
-$("#tx-add-btn").addEventListener("click", () => {
+// saisie manuelle et modification d'une opération (même fenêtre)
+let editingTxId = null;
+function openTxDialog(tx = null) {
   const f = $("#tx-form");
   f.reset();
-  f.date.value = new Date().toISOString().slice(0, 10);
+  editingTxId = tx ? tx.id : null;
+  $("#tx-dialog-title").textContent = tx ? "Modifier l'opération" : "Nouvelle opération";
+  $("#tx-dialog-submit").textContent = tx ? "Enregistrer" : "Ajouter";
+  if (tx) {
+    f.account_id.value = tx.account_id;
+    f.date.value = tx.date;
+    f.label.value = tx.label;
+    f.amount.value = String(tx.amount).replace(".", ",");
+    f.category_id.value = tx.category_id ?? "";
+    f.note.value = tx.note;
+    f.recurring.checked = !!tx.recurring;
+  } else {
+    f.date.value = today();
+  }
   $("#tx-dialog").showModal();
-});
+}
+$("#tx-add-btn").addEventListener("click", () => openTxDialog());
 $("#tx-dialog").addEventListener("close", async () => {
   if ($("#tx-dialog").returnValue !== "ok") return;
   const f = $("#tx-form");
-  await api("/api/transactions", {
-    method: "POST",
-    body: {
-      account_id: Number(f.account_id.value), date: f.date.value, label: f.label.value, amount: f.amount.value,
-      category_id: f.category_id.value ? Number(f.category_id.value) : null, recurring: f.recurring.checked,
-    },
-  });
-  toast("Opération ajoutée"); loadTransactions();
+  const body = {
+    account_id: Number(f.account_id.value), date: f.date.value, label: f.label.value, amount: f.amount.value,
+    category_id: f.category_id.value ? Number(f.category_id.value) : null, recurring: f.recurring.checked,
+    note: f.note.value,
+  };
+  try {
+    if (editingTxId) {
+      await api(`/api/transactions/${editingTxId}`, { method: "PUT", body });
+      toast("Opération modifiée");
+    } else {
+      await api("/api/transactions", { method: "POST", body });
+      toast("Opération ajoutée");
+    }
+  } catch {
+    $("#tx-dialog").showModal(); // saisie refusée (message affiché par api) : on garde les valeurs pour corriger
+    return;
+  }
+  loadTransactions();
 });
 
 // règle depuis une opération

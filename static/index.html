@@ -166,16 +166,17 @@
 <!-- Saisie manuelle -->
 <dialog id="tx-dialog">
   <form method="dialog" id="tx-form" class="dialog-form">
-    <h2>Nouvelle opération</h2>
+    <h2 id="tx-dialog-title">Nouvelle opération</h2>
     <label>Compte <select name="account_id" class="account-select"></select></label>
     <label>Date <input name="date" type="date" required></label>
     <label>Libellé <input name="label" required></label>
-    <label>Montant (négatif = dépense) <input name="amount" required placeholder="-42,50"></label>
+    <label>Montant (négatif = dépense) <input name="amount" required placeholder="-42,50" inputmode="decimal"></label>
     <label>Catégorie <select name="category_id" class="category-select"></select></label>
+    <label>Note <input name="note" placeholder="Facultatif"></label>
     <label class="check"><input type="checkbox" name="recurring"> Récurrente</label>
     <div class="row end">
       <button class="btn" value="cancel" formnovalidate>Annuler</button>
-      <button class="btn primary" value="ok">Ajouter</button>
+      <button class="btn primary" value="ok" id="tx-dialog-submit">Ajouter</button>
     </div>
   </form>
 </dialog>

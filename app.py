@@ -238,20 +238,52 @@ def delete_transactions():
     return jsonify({"ok": True})
 
 
+def _tx_fields(d: dict) -> dict | None:
+    """Valide les champs d'une opération saisie ou modifiée à la main ; None si invalide."""
+    date_iso = importer.parse_date(str(d.get("date") or ""))
+    amount = importer.parse_amount(str(d.get("amount", "")))
+    label = (d.get("label") or "").strip()
+    if not date_iso or amount is None or not label or not d.get("account_id"):
+        return None
+    return {
+        "account_id": int(d["account_id"]), "date": date_iso, "label": label, "amount": round(amount, 2),
+        "category_id": d.get("category_id") or None, "recurring": int(bool(d.get("recurring"))),
+        "note": (d.get("note") or "").strip(),
+    }
+
+
 @app.post("/api/transactions")
 def create_transaction():
     """Saisie manuelle d'une opération (ex : dépense en espèces)."""
-    d = request.json or {}
-    tx = {"date": d.get("date"), "label": (d.get("label") or "").strip(), "amount": importer.parse_amount(str(d.get("amount", "")))}
-    if not importer.parse_date(tx["date"] or "") or tx["amount"] is None or not tx["label"]:
-        return error("Date, libellé et montant sont obligatoires")
+    tx = _tx_fields(request.json or {})
+    if tx is None:
+        return error("Compte, date, libellé et montant sont obligatoires")
     with connect() as conn:
         cur = conn.execute(
-            "INSERT INTO transactions(account_id, date, label, amount, category_id, recurring, hash) VALUES (?,?,?,?,?,?,?)",
-            (d["account_id"], tx["date"], tx["label"], tx["amount"], d.get("category_id") or None,
-             int(bool(d.get("recurring"))), "manual-" + uuid.uuid4().hex),
+            "INSERT INTO transactions(account_id, date, label, amount, category_id, recurring, note, hash) "
+            "VALUES (:account_id, :date, :label, :amount, :category_id, :recurring, :note, :hash)",
+            {**tx, "hash": "manual-" + uuid.uuid4().hex},
         )
     return jsonify({"id": cur.lastrowid})
+
+
+@app.put("/api/transactions/<int:tx_id>")
+def update_transaction(tx_id):
+    """Modification complète d'une opération (date, libellé, montant, compte…).
+    L'empreinte `hash` est volontairement conservée : en réimportant le même relevé, la ligne
+    d'origine est reconnue comme déjà présente et la version corrigée n'est pas dupliquée."""
+    tx = _tx_fields(request.json or {})
+    if tx is None:
+        return error("Compte, date, libellé et montant sont obligatoires")
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE transactions SET account_id=:account_id, date=:date, label=:label, amount=:amount, "
+            "category_id=:category_id, recurring=:recurring, note=:note WHERE id=:id",
+            {**tx, "id": tx_id},
+        )
+    if not cur.rowcount:
+        return error("Opération introuvable", 404)
+    return jsonify({"ok": True})
 
 
 @app.post("/api/recurring/detect")

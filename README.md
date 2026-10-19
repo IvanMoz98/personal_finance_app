@@ -45,7 +45,9 @@ Pour la version « fenêtre native » (celle des exécutables) :
    Le séparateur, l'encodage, les lignes d'en-tête de la banque et les colonnes sont détectés automatiquement ;
    vérifiez les colonnes proposées puis importez. Réimporter un relevé qui chevauche le précédent ne crée pas de doublons.
 3. **Opérations** : catégorisez (une par une ou par lot en cochant plusieurs lignes), marquez récurrent/ponctuel,
-   ajoutez des notes. Le bouton ⚡ crée une règle à partir du libellé.
+   ajoutez des notes. Le bouton ✎ (ou un double-clic sur la date, le libellé ou le montant) permet de modifier
+   entièrement une opération : compte, date, libellé, montant, catégorie, note. Une opération importée puis
+   modifiée n'est pas recréée si vous réimportez le même relevé. Le bouton ⚡ crée une règle à partir du libellé.
 4. **Catégories & règles** : une règle « le libellé contient X → catégorie Y » s'applique automatiquement
    aux imports suivants. « Détecter les dépenses récurrentes » repère les opérations qui reviennent chaque mois
    avec un montant proche (abonnements, loyer, factures…).
